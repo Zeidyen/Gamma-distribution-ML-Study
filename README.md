@@ -17,6 +17,24 @@ uv venv .venv --python 3.12 && uv pip install --python .venv/bin/python -r requi
 .venv/bin/python make_supplement_tables.py     # supplement tables + all t-tests -> results/
 ```
 
+KKBox (Section 3.5, Table 8, Tables S19-S20) needs a Kaggle API key in
+`~/.kaggle/kaggle.json` and acceptance of the rules of the
+`kkbox-churn-prediction-challenge` competition; pycox then downloads and builds
+the data (about 2.8 million rows; the build needs several GB of memory). About
+2 hours with 7 workers, plus a few minutes for the forest:
+
+```bash
+M=$(.venv/bin/python -c "import realdata as r; print(' '.join(m for m in r.MODELS if m != 'rsf'))")
+.venv/bin/python kkbox_benchmark.py --repeats 3 --workers 7 --models $M --tag _full
+.venv/bin/python kkbox_benchmark.py --repeats 3 --workers 3 --models rsf --tag _rsf
+.venv/bin/python kkbox_benchmark.py --repeats 3 --workers 3 --models mix_weibull/x --tag _mixweibull_fixed
+```
+
+`make_supplement_tables.py` merges the three into `results/kkbox_raw.csv`. The
+`_full` run predates the non-finite-gradient check in `network.train`, which is
+why the Weibull mixture has its own run; with the check in place, the `_full`
+command alone should give the same Weibull mixture (same seeds and splits).
+
 All results the paper reports are saved in `results/` (`*_raw.csv`: one row
 per fit or fold; `*_summary.csv`: aggregated). The notes below are the
 development log kept while the study was run.

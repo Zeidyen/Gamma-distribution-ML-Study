@@ -245,6 +245,78 @@ def tests():
     return t
 
 
+def kkbox_raw():
+    """KKBox results from the three runs: main run, RSF on its subsample, and the Weibull mixture
+    rerun after the non-finite-gradient fix in network.train (the main run's Weibull mixture
+    weights went NaN in the first epoch). Also written to results/kkbox_raw.csv."""
+    full = pd.read_csv(RES / "kkbox_raw_full.csv")
+    raw = pd.concat([full[full.model != "mix_weibull/x"], pd.read_csv(RES / "kkbox_raw_rsf.csv"),
+                     pd.read_csv(RES / "kkbox_raw_mixweibull_fixed.csv")], ignore_index=True)
+    raw.to_csv(RES / "kkbox_raw.csv", index=False)
+    return raw
+
+
+def kkbox_tests(raw, metrics=(("ibs", 1000), ("test_nll", 1), ("c_td", 1))):
+    """Corrected resampled t-test, Burr XII mixture minus each model, over the 3 customer splits."""
+    a = raw[raw.model == "mix_burr12/x"].set_index("repeat")
+    ratio = (a.n_test / a.n_train).mean()  # full-data ratio; RSF trained on a subsample but is scored the same way
+    out = []
+    for m in REAL_ORDER[1:]:
+        b = raw[raw.model == m].set_index("repeat")
+        for k, scale in metrics:
+            d = ((a[k] - b[k]) * scale).dropna()
+            if len(d) < 2:
+                continue
+            J = len(d)
+            se = np.sqrt((1 / J + ratio) * d.var(ddof=1))
+            tq = stats.t.ppf(0.975, J - 1)
+            out.append(dict(comparator=m, metric=k, splits=J, diff=d.mean(), lo=d.mean() - tq * se,
+                            hi=d.mean() + tq * se, p=2 * stats.t.sf(abs(d.mean() / se), J - 1),
+                            burr_better=int((d < 0).sum() if k != "c_td" else (d > 0).sum())))
+    t = pd.DataFrame(out)
+    t.to_csv(RES / "kkbox_tests.csv", index=False)
+    return t
+
+
+def kkbox():
+    raw = kkbox_raw()
+    s = raw.groupby("model").mean(numeric_only=True)
+    rows = []
+    for m in REAL_ORDER:
+        r = s.loc[m]
+        rows.append([real_name(m), f(r.c_td, 3), f(1000 * r.ibs, 1), f(1000 * r.ibll, 1), f(1000 * r.brier_q50, 1),
+                     f(1000 * r.brier_q75, 1), f(1000 * r.brier_q90, 1), f"{r.dcal_stat:,.0f}",
+                     f(r.test_nll, 3), f"{r.seconds:,.0f}"])
+    write("tab_real_kkbox", "KKBox: all metrics, mean over 3 customer-level splits.", "stab:real_kkbox",
+          "lrrrrrrrrr", "Model & $C^{td}$ & IBS & IBLL & $B_{50}$ & $B_{75}$ & $B_{90}$ & D-cal $\\chi^2$ & "
+          "Test NLL & Seconds", rows, size="\\footnotesize",
+          note="As Tables~\\ref{stab:real_metabric}--\\ref{stab:real_flchain}, except: concordance, Brier scores and D-calibration use a fixed random "
+          "50,000 test spells per split (test NLL uses all of them); every model fails D-calibration at this "
+          "size, so the $\\chi^2$ statistic (9 df) is shown instead of a pass rate; the random survival forest "
+          "was trained on 50,000 spells. The Weibull mixture is from the rerun after the gradient fix "
+          "(Section~\\ref{sec:nettrain}). Seconds: mean fitting time per split.")
+    t = kkbox_tests(raw)
+    rows = []
+    for m in REAL_ORDER[1:]:
+        cells = []
+        for k in ("ibs", "test_nll", "c_td"):
+            r = t[(t.comparator == m) & (t.metric == k)]
+            if r.empty:
+                cells.append("--")
+                continue
+            r = r.iloc[0]
+            d = 1 if k == "ibs" else 3
+            c = f"{r['diff']:.{d}f} [{r.lo:.{d}f}, {r.hi:.{d}f}]".replace("-", "$-$")
+            cells.append(f"\\textbf{{{c}}}" if r.p < 0.05 else c)
+        rows.append([real_name(m)] + cells)
+    write("tab_kkbox_tests", "KKBox: Burr XII mixture minus every other model, mean [95\\% CI] over the 3 "
+          "customer splits from the corrected resampled $t$-test (2 df). Bold marks $p < 0.05$.",
+          "stab:kkbox_tests", "lrrr", "Comparator & IBS $\\times 1000$ & Test NLL & $C^{td}$", rows,
+          size="\\scriptsize", note="Negative IBS and NLL differences, and positive $C^{td}$ differences, "
+          "favour the Burr XII mixture.")
+    return t
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, default=OUT)
@@ -252,5 +324,7 @@ if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     recovery(); survival(); covariate(); misspec(); network(); real()
     t = tests()
+    kt = kkbox()
     print(f"wrote {len(list(OUT.glob('*.tex')))} tables to {OUT}")
     print(t[t.p < 0.05][["dataset", "comparator", "diff", "p"]].to_string(index=False))
+    print(kt.to_string(index=False))

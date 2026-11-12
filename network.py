@@ -99,6 +99,12 @@ def train(model, x, t, e, val_frac=0.2, lr=1e-3, weight_decay=1e-4, batch=256, m
                 continue
             opt.zero_grad()
             loss.backward()
+            # a finite loss can still have a NaN gradient: in a mixture, a component
+            # whose survival term overflows to -inf gets weight 0 in logsumexp, and
+            # backward gives 0 * inf = NaN, which one optimiser step spreads to every weight
+            if not all(torch.isfinite(p.grad).all() for p in model.parameters() if p.grad is not None):
+                skipped += 1
+                continue
             nn.utils.clip_grad_norm_(model.parameters(), 10.0)
             opt.step()
         model.eval()
