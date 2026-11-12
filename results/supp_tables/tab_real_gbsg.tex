@@ -1,0 +1,33 @@
+\begin{table}[htbp]
+\centering
+\caption{GBSG: all metrics, mean over 25 test folds.}\label{stab:real_gbsg}
+\footnotesize
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+Model & $C^{td}$ & IBS & IBLL & $B_{50}$ & $B_{75}$ & $B_{90}$ & D-cal \% & Test NLL & Seconds \\
+\midrule
+Mixture, Burr XII (x) & 0.678 & 175.2 & 518.7 & 208.2 & 211.2 & 142.2 & 100 & 2.901 & 24.4 \\
+Mixture, log-normal (x) & 0.680 & 175.0 & 518.0 & 207.8 & 211.1 & 139.7 & 100 & 2.898 & 0.6 \\
+Mixture, Weibull (x) & 0.679 & 175.4 & 519.2 & 208.1 & 211.9 & 137.6 & 100 & 2.900 & 39.6 \\
+GB2 (x), cold start & 0.678 & 175.1 & 518.0 & 208.1 & 211.1 & 143.5 & 100 & 2.897 & 334.5 \\
+GB2, cold start & 0.680 & 176.2 & 521.3 & 209.3 & 213.0 & 137.0 & 96 & 2.907 & 294.8 \\
+GB2 (x), warm start & 0.678 & 176.3 & 521.8 & 209.5 & 212.4 & 140.7 & 100 & 2.906 & 104.1 \\
+Burr XII (x) & 0.679 & 176.2 & 521.4 & 209.3 & 212.2 & 141.1 & 100 & 2.907 & 0.6 \\
+Burr XII & 0.679 & 176.7 & 522.6 & 210.0 & 213.0 & 142.3 & 96 & 2.920 & 39.3 \\
+MAPT-Burr XII (x) & 0.678 & 176.2 & 521.6 & 209.4 & 212.4 & 140.9 & 100 & 2.908 & 39.4 \\
+MAPT-Burr XII & 0.679 & 176.7 & 522.6 & 210.0 & 213.0 & 142.3 & 100 & 2.920 & 39.7 \\
+ER-BurrXII (x) & 0.682 & 176.4 & 523.6 & 209.2 & 212.3 & 139.8 & 0 & 2.941 & 119.3 \\
+ER-BurrXII & 0.678 & 177.3 & 525.4 & 210.0 & 213.0 & 148.6 & 8 & 2.952 & 120.8 \\
+Weibull (x) & 0.682 & 176.5 & 522.4 & 209.9 & 212.5 & 129.6 & 52 & 2.944 & 0.4 \\
+Weibull & 0.679 & 176.9 & 524.0 & 209.7 & 212.8 & 133.0 & 24 & 2.950 & 0.5 \\
+Log-normal (x) & 0.681 & 175.7 & 519.7 & 208.9 & 211.8 & 139.3 & 100 & 2.906 & 0.4 \\
+Log-normal & 0.681 & 175.7 & 519.4 & 208.7 & 211.8 & 137.8 & 100 & 2.906 & 0.5 \\
+Random survival forest & 0.671 & 177.0 & 522.2 & 211.4 & 212.4 & 160.8 & 100 & -- & 119.7 \\
+Cox (linear) & 0.678 & 177.2 & 524.6 & 210.7 & 212.5 & 158.6 & 100 & -- & 39.1 \\
+DeepSurv & 0.675 & 177.7 & 526.2 & 211.3 & 213.1 & 147.6 & 100 & -- & 38.9 \\
+DeepHit & 0.671 & 201.7 & 578.8 & 241.2 & 247.7 & 158.1 & 0 & -- & 39.3 \\
+\bottomrule
+\end{tabular}
+
+\par\vspace{0.3em}{\footnotesize IBS, IBLL and Brier scores $\times 1000$ (lower is better). $B_{50}$, $B_{75}$, $B_{90}$: Brier score at the 50th, 75th and 90th percentiles of test times. D-cal \%: folds passing D-calibration at 5\%. Test NLL: held-out censored negative log-likelihood per patient (parametric models only). Seconds: mean fitting time per fold. (x): shapes predicted per patient.}
+\end{table}

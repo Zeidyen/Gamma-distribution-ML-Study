@@ -1,0 +1,75 @@
+{\small
+\begin{longtable}{lllrrr}
+\caption{Study 1, linear-covariate check ($n = 2{,}000$, 30\% censoring, 100 replicates). Every raw output is linear in $x_1, x_2$; only the log scale truly depends on them, so the true shape slopes are zero.}\label{stab:covariate}\\
+\toprule
+Head and setting & Coefficient & Kind & True & Bias & RMSE \\
+\midrule
+\endfirsthead
+\multicolumn{6}{l}{\emph{Table \ref{stab:covariate}, continued}}\\
+\toprule
+Head and setting & Coefficient & Kind & True & Bias & RMSE \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+Weibull W & \texttt{b0\_scale} & intercept (log param) & 0.000 & -0.002 & 0.018 \\
+ & \texttt{b0\_shape} & intercept (log param) & 0.405 & 0.002 & 0.021 \\
+ & \texttt{b1\_scale} & slope x1 & 0.500 & 0.001 & 0.018 \\
+ & \texttt{b1\_shape} & slope x1 & 0.000 & 0.003 & 0.023 \\
+ & \texttt{b2\_scale} & slope x2 & -0.300 & -0.000 & 0.018 \\
+ & \texttt{b2\_shape} & slope x2 & 0.000 & -0.001 & 0.021 \\
+Burr XII A & \texttt{b0\_a} & intercept (log param) & 0.000 & -0.004 & 0.057 \\
+ & \texttt{b0\_c} & intercept (log param) & 1.099 & 0.012 & 0.042 \\
+ & \texttt{b0\_k} & intercept (log param) & 0.000 & -0.010 & 0.108 \\
+ & \texttt{b1\_a} & slope x1 & 0.500 & -0.000 & 0.059 \\
+ & \texttt{b1\_c} & slope x1 & 0.000 & -0.001 & 0.042 \\
+ & \texttt{b1\_k} & slope x1 & 0.000 & 0.004 & 0.111 \\
+ & \texttt{b2\_a} & slope x2 & -0.300 & -0.015 & 0.058 \\
+ & \texttt{b2\_c} & slope x2 & 0.000 & 0.004 & 0.045 \\
+ & \texttt{b2\_k} & slope x2 & 0.000 & -0.031 & 0.113 \\
+ER-BurrXII A & \texttt{b0\_a} & intercept (log param) & 0.000 & 0.099 & 0.330 \\
+ & \texttt{b0\_c} & intercept (log param) & 1.099 & 0.014 & 0.211 \\
+ & \texttt{b1\_a} & slope x1 & 0.500 & -0.043 & 0.178 \\
+ & \texttt{b1\_c} & slope x1 & 0.000 & 0.039 & 0.145 \\
+ & \texttt{b2\_a} & slope x2 & -0.300 & 0.034 & 0.128 \\
+ & \texttt{b2\_c} & slope x2 & 0.000 & -0.048 & 0.152 \\
+ & \texttt{b0\_q} & intercept (log param) & 0.155 & 0.121 & 0.627 \\
+ & \texttt{b1\_q} & slope x1 & 0.000 & -0.098 & 0.354 \\
+ & \texttt{b2\_q} & slope x2 & 0.000 & 0.086 & 0.297 \\
+GB2 $(a,c,p,q)$ A & \texttt{b0\_a} & intercept (log param) & 0.000 & 0.022 & 0.319 \\
+ & \texttt{b0\_c} & intercept (log param) & 0.693 & -0.103 & 0.316 \\
+ & \texttt{b1\_a} & slope x1 & 0.500 & -0.019 & 0.119 \\
+ & \texttt{b1\_c} & slope x1 & 0.000 & 0.005 & 0.182 \\
+ & \texttt{b2\_a} & slope x2 & -0.300 & 0.012 & 0.106 \\
+ & \texttt{b2\_c} & slope x2 & 0.000 & -0.017 & 0.178 \\
+ & \texttt{b0\_q} & intercept (log param) & 0.407 & 0.206 & 0.601 \\
+ & \texttt{b1\_q} & slope x1 & 0.000 & -0.024 & 0.317 \\
+ & \texttt{b2\_q} & slope x2 & 0.000 & 0.039 & 0.309 \\
+ & \texttt{b0\_p} & intercept (log param) & 0.407 & 0.205 & 0.540 \\
+ & \texttt{b1\_p} & slope x1 & 0.000 & -0.001 & 0.301 \\
+ & \texttt{b2\_p} & slope x2 & 0.000 & 0.019 & 0.284 \\
+GB2, generalized F A & \texttt{b0\_mu} & intercept (log param) & 0.000 & -0.006 & 0.029 \\
+ & \texttt{b0\_sigma} & intercept (log param) & -0.549 & 0.001 & 0.052 \\
+ & \texttt{b0\_Q} & intercept (log param) & 0.000 & -0.009 & 0.081 \\
+ & \texttt{b0\_P} & intercept (log param) & -0.408 & -3.149 & 29.952 \\
+ & \texttt{b1\_mu} & slope x1 & 0.500 & -0.001 & 0.028 \\
+ & \texttt{b1\_sigma} & slope x1 & 0.000 & 0.001 & 0.042 \\
+ & \texttt{b1\_Q} & slope x1 & 0.000 & -0.008 & 0.086 \\
+ & \texttt{b1\_P} & slope x1 & 0.000 & 0.680 & 6.820 \\
+ & \texttt{b2\_mu} & slope x2 & -0.300 & 0.003 & 0.025 \\
+ & \texttt{b2\_sigma} & slope x2 & 0.000 & 0.003 & 0.043 \\
+ & \texttt{b2\_Q} & slope x2 & 0.000 & 0.008 & 0.074 \\
+ & \texttt{b2\_P} & slope x2 & 0.000 & -0.362 & 3.347 \\
+GB2 A & \texttt{b0\_q} & intercept (log param) & 0.407 & 0.564 & 1.341 \\
+ & \texttt{b1\_q} & slope x1 & 0.000 & -0.064 & 0.836 \\
+ & \texttt{b2\_q} & slope x2 & 0.000 & -0.119 & 0.936 \\
+ & \texttt{b0\_p} & intercept (log param) & 0.407 & 0.437 & 1.014 \\
+ & \texttt{b1\_p} & slope x1 & 0.000 & -0.057 & 0.733 \\
+ & \texttt{b2\_p} & slope x2 & 0.000 & -0.106 & 0.787 \\
+ & \texttt{b0\_mu} & intercept (log param) & 0.000 & -0.003 & 0.016 \\
+ & \texttt{b0\_sigma} & intercept (log param) & -0.380 & -0.000 & 0.026 \\
+ & \texttt{b1\_mu} & slope x1 & 0.500 & 0.002 & 0.019 \\
+ & \texttt{b1\_sigma} & slope x1 & 0.000 & -0.000 & 0.026 \\
+ & \texttt{b2\_mu} & slope x2 & -0.300 & 0.001 & 0.017 \\
+ & \texttt{b2\_sigma} & slope x2 & 0.000 & 0.002 & 0.027 \\
+\end{longtable}}

@@ -1,0 +1,30 @@
+\begin{table}[htbp]
+\centering
+\caption{Study 3: tail calibration (mean predicted $S$ at each patient's true 1\% time, divided by 0.01; 1 is calibrated), median of 20 runs.}\label{stab:network_cal}
+\scriptsize
+\begin{tabular}{lrrrrrr}
+\toprule
+& \multicolumn{3}{c}{$n = 1{,}000$} & \multicolumn{3}{c}{$n = 5{,}000$} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Head & Weibull AFT & Log-normal & GB2, varying tail & Weibull AFT & Log-normal & GB2, varying tail \\
+\midrule
+Burr XII & 7.56 & 2.35 & 5.58 & 4.11 & 1.24 & 2.91 \\
+Burr XII (x) & 6.43 & 2.92 & 5.61 & 2.82 & 2.62 & 2.73 \\
+ER-BurrXII & 7.83 & 3.01 & 5.89 & 2.06 & 0.95 & 2.25 \\
+ER-BurrXII (x) & 5.25 & 2.63 & 5.64 & 2.51 & 2.12 & 2.51 \\
+GB2 & 6.38 & 2.74 & 6.87 & 2.45 & 2.16 & 3.70 \\
+GB2 (x) & 4.53 & 2.97 & 6.43 & 2.14 & 1.81 & 2.38 \\
+Log-normal & 9.23 & 1.82 & 6.06 & 7.04 & 1.26 & 4.02 \\
+Log-normal (x) & 9.34 & 2.11 & 5.04 & 7.16 & 1.35 & 2.34 \\
+MAPT-Burr XII & 7.45 & 2.19 & 5.46 & 3.79 & 1.22 & 2.88 \\
+MAPT-Burr XII (x) & 5.93 & 2.61 & 5.43 & 3.07 & 2.47 & 2.34 \\
+Mixture, Burr XII (x) & 5.28 & 2.82 & 5.83 & 2.78 & 1.91 & 3.00 \\
+Mixture, log-normal (x) & 5.62 & 2.22 & 4.76 & 2.47 & 1.39 & 2.20 \\
+Mixture, Weibull (x) & 4.75 & 2.09 & 5.03 & 2.23 & 1.00 & 2.65 \\
+Weibull & 3.91 & 0.89 & 4.92 & 1.72 & 0.27 & 2.35 \\
+Weibull (x) & 4.19 & 1.44 & 5.61 & 1.89 & 0.37 & 1.62 \\
+\bottomrule
+\end{tabular}
+
+\par\vspace{0.3em}{\footnotesize (x): shape parameters predicted per patient.}
+\end{table}

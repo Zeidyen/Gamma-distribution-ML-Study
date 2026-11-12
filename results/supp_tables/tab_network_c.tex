@@ -1,0 +1,30 @@
+\begin{table}[htbp]
+\centering
+\caption{Study 3: concordance of predicted median with true time, median of 20 runs.}\label{stab:network_c}
+\scriptsize
+\begin{tabular}{lrrrrrr}
+\toprule
+& \multicolumn{3}{c}{$n = 1{,}000$} & \multicolumn{3}{c}{$n = 5{,}000$} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Head & Weibull AFT & Log-normal & GB2, varying tail & Weibull AFT & Log-normal & GB2, varying tail \\
+\midrule
+Burr XII & 0.707 & 0.706 & 0.818 & 0.720 & 0.720 & 0.829 \\
+Burr XII (x) & 0.698 & 0.698 & 0.812 & 0.720 & 0.719 & 0.828 \\
+ER-BurrXII & 0.708 & 0.705 & 0.817 & 0.720 & 0.719 & 0.827 \\
+ER-BurrXII (x) & 0.698 & 0.692 & 0.810 & 0.720 & 0.719 & 0.828 \\
+GB2 & 0.702 & 0.699 & 0.815 & 0.721 & 0.720 & 0.829 \\
+GB2 (x) & 0.698 & 0.693 & 0.806 & 0.721 & 0.720 & 0.828 \\
+Log-normal & 0.696 & 0.702 & 0.816 & 0.720 & 0.720 & 0.828 \\
+Log-normal (x) & 0.686 & 0.695 & 0.807 & 0.720 & 0.720 & 0.828 \\
+MAPT-Burr XII & 0.707 & 0.706 & 0.818 & 0.720 & 0.720 & 0.829 \\
+MAPT-Burr XII (x) & 0.700 & 0.700 & 0.813 & 0.720 & 0.720 & 0.828 \\
+Mixture, Burr XII (x) & 0.697 & 0.695 & 0.814 & 0.721 & 0.720 & 0.827 \\
+Mixture, log-normal (x) & 0.689 & 0.691 & 0.813 & 0.720 & 0.719 & 0.827 \\
+Mixture, Weibull (x) & 0.695 & 0.691 & 0.810 & 0.721 & 0.720 & 0.826 \\
+Weibull & 0.706 & 0.699 & 0.812 & 0.721 & 0.719 & 0.826 \\
+Weibull (x) & 0.697 & 0.687 & 0.804 & 0.721 & 0.719 & 0.827 \\
+\bottomrule
+\end{tabular}
+
+\par\vspace{0.3em}{\footnotesize (x): shape parameters predicted per patient.}
+\end{table}
