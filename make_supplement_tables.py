@@ -214,6 +214,23 @@ def real():
               "(parametric models only). Seconds: mean fitting time per fold. (x): shapes predicted per patient.")
 
 
+def holm(p):
+    """Holm step-down adjusted p-values."""
+    p = np.asarray(p, dtype=float)
+    adj, run = np.empty(len(p)), 0.0
+    for i, j in enumerate(np.argsort(p)):
+        run = max(run, (len(p) - i) * p[j])
+        adj[j] = min(run, 1.0)
+    return adj
+
+
+def mark(c, r):
+    """Bold for p < 0.05; a dagger when it survives Holm adjustment as well."""
+    if r.p >= 0.05:
+        return c
+    return f"\\textbf{{{c}}}" + ("$^{\\dagger}$" if r.p_holm < 0.05 else "")
+
+
 def tests():
     raw = pd.read_csv(RES / "real_raw.csv")
     out = []
@@ -229,6 +246,7 @@ def tests():
             out.append(dict(dataset=ds, comparator=m, folds=J, diff=d.mean(), lo=d.mean() - tq * se,
                             hi=d.mean() + tq * se, p=2 * stats.t.sf(abs(d.mean() / se), J - 1)))
     t = pd.DataFrame(out)
+    t["p_holm"] = t.groupby("dataset").p.transform(holm)  # over the 19 comparators per dataset
     t.to_csv(RES / "real_tests_all.csv", index=False)
     rows = []
     for m in REAL_ORDER[1:]:
@@ -236,11 +254,11 @@ def tests():
         for ds, _ in DATASETS:
             r = t[(t.dataset == ds) & (t.comparator == m)].iloc[0]
             c = f"{r['diff']:.1f} [{r.lo:.1f}, {r.hi:.1f}]".replace("-", "$-$")
-            cells.append(f"\\textbf{{{c}}}" if r.p < 0.05 else c)
+            cells.append(mark(c, r))
         rows.append([real_name(m)] + cells)
     write("tab_tests", "Burr XII mixture minus every other model, integrated Brier score $\\times 1000$: mean "
           "[95\\% CI] from the corrected resampled $t$-test. Negative favours the Burr XII mixture; bold marks "
-          "$p < 0.05$.", "stab:tests", "lrrrr", "Comparator & " + " & ".join(n for _, n in DATASETS), rows,
+          "$p < 0.05$, and $^{\\dagger}$ marks $p < 0.05$ after Holm adjustment over the 19 comparators.", "stab:tests", "lrrrr", "Comparator & " + " & ".join(n for _, n in DATASETS), rows,
           size="\\scriptsize")
     return t
 
@@ -274,6 +292,7 @@ def kkbox_tests(raw, metrics=(("ibs", 1000), ("test_nll", 1), ("c_td", 1))):
                             hi=d.mean() + tq * se, p=2 * stats.t.sf(abs(d.mean() / se), J - 1),
                             burr_better=int((d < 0).sum() if k != "c_td" else (d > 0).sum())))
     t = pd.DataFrame(out)
+    t["p_holm"] = t.groupby("metric").p.transform(holm)  # over the comparators for each metric
     t.to_csv(RES / "kkbox_tests.csv", index=False)
     return t
 
@@ -307,14 +326,110 @@ def kkbox():
             r = r.iloc[0]
             d = 1 if k == "ibs" else 3
             c = f"{r['diff']:.{d}f} [{r.lo:.{d}f}, {r.hi:.{d}f}]".replace("-", "$-$")
-            cells.append(f"\\textbf{{{c}}}" if r.p < 0.05 else c)
+            cells.append(mark(c, r))
         rows.append([real_name(m)] + cells)
     write("tab_kkbox_tests", "KKBox: Burr XII mixture minus every other model, mean [95\\% CI] over the 3 "
-          "customer splits from the corrected resampled $t$-test (2 df). Bold marks $p < 0.05$.",
+          "customer splits from the corrected resampled $t$-test (2 df). Bold marks $p < 0.05$, and $^{\\dagger}$ marks "
+          "$p < 0.05$ after Holm adjustment over the comparators for that metric.",
           "stab:kkbox_tests", "lrrr", "Comparator & IBS $\\times 1000$ & Test NLL & $C^{td}$", rows,
           size="\\scriptsize", note="Negative IBS and NLL differences, and positive $C^{td}$ differences, "
           "favour the Burr XII mixture.")
     return t
+
+
+def sci(x):
+    """1.2e-10 as $1.2 \\times 10^{-10}$; 0 as 0."""
+    if x == 0:
+        return "0"
+    m, e = f"{x:.1e}".split("e")
+    return f"${m} \\times 10^{{{int(e)}}}$"
+
+
+def betainc():
+    s = pd.read_csv(RES / "betainc_accuracy_summary.csv").set_index("band")
+    rows = []
+    for band, lab in (("I > 1e-10", "$I > 10^{-10}$"), ("1e-300 < I < 1e-10", "$10^{-300} < I \\le 10^{-10}$"),
+                      ("I < 1e-300", "$I \\le 10^{-300}$"), ("all", "All")):
+        r = s.loc[band]
+        rows.append([lab, f"{int(r.points):,}", sci(r.median_err), sci(r.max_err), f"{int(r.points - r.scipy_finite)}",
+                     sci(r.dlogx_max), sci(r.da_max), sci(r.db_max)])
+    write("tab_betainc", "Accuracy of the differentiable $\\log I_x(a, b)$ against an 80-digit mpmath reference: "
+          "1,300 points with $a, b \\in \\{0.05, 0.1, 0.3, 1, 3, 10, 30, 100, 300, 990\\}$ and 13 values of $x$ from "
+          "$10^{-8}$ to 0.999.", "stab:betainc", "lrrrrrrr",
+          "$I$ (reference) & Points & \\multicolumn{2}{c}{Error of $\\log I$} & SciPy & "
+          "\\multicolumn{3}{c}{Max.\\ relative error of derivative} \\\\\n & & Median & Max. & zero & "
+          "$\\partial/\\partial \\log x$ & $\\partial/\\partial a$ & $\\partial/\\partial b$", rows, size="\\footnotesize",
+          note="Error of $\\log I$: absolute error, equal to the relative error of $I$. SciPy zero: points where "
+          "\\texttt{scipy.special.betainc} returns 0, so that $\\log I = -\\infty$. Derivatives: autograd against "
+          "numerical differentiation of the reference, as relative error, or absolute error where the derivative "
+          "is below $10^{-8}$. Because $1 - I_x(a, b) = I_{1-x}(b, a)$, the grid covers both tails. Source: "
+          "\\texttt{betainc\\_accuracy.py}.")
+
+
+def kkbox_tail():
+    fits = pd.read_csv(RES / "kkbox_tail.csv")
+    km = pd.read_csv(RES / "kkbox_km.csv")
+    best = fits.aic.min()
+    rows = []
+    for _, r in fits.iterrows():
+        rows.append([r.model, f(r.loglik_per_spell, 4).replace("-", "$-$"), f"{(r.aic - best):,.0f}", f(r.S_759, 3)])
+    rows.append(["Kaplan--Meier", "--", "--", f(km.S.iloc[-1], 3)])
+    write("tab_kkbox_tail", "KKBox: distributions fitted without covariates to all 2,814,735 spells.",
+          "stab:kkbox_tail", "lrrr", "Model & Log-likelihood per spell & $\\Delta$AIC & $S(759)$", rows,
+          note="$S(759)$: fitted survival at the end of follow-up (759 days). Burr XII: $a = "
+          f"{fits.set_index('model').loc['Burr XII', 'a']:.1f}$, $c = {fits.set_index('model').loc['Burr XII', 'c']:.2f}$, "
+          f"$k = {fits.set_index('model').loc['Burr XII', 'k']:.3f}$. GB2 (log-moment form) reached the shape cap "
+          f"($p = {fits.set_index('model').loc['GB2', 'p']:.0f}$). Source: \\texttt{{kkbox\\_tail.py}}.")
+
+
+def cap_sensitivity():
+    """Study 2 rerun with the shape cap at 100 to 100,000 (sim_cap_sensitivity.py)."""
+    d = pd.read_csv(RES / "cap_sensitivity_raw.csv")
+    d = d[d.model.isin(["er_burr12", "gb2_lmom"])].copy()
+    d["shape"] = np.where(d.model == "gb2_lmom", d[["par_p", "par_q"]].max(axis=1), d.par_k)
+    key = ["model", "truth", "n", "cens", "rep"]
+    ref = d[d.cap == 1e3].set_index(key)[["excess_logloss", "S_hat_0.01"]]
+    d = d.join(ref, on=key, rsuffix="_ref")
+    rows = []
+    for (m, cap), g in d.groupby(["model", "cap"]):
+        dS = (g["S_hat_0.01"] - g["S_hat_0.01_ref"]).abs()
+        same = ((g.excess_logloss - g.excess_logloss_ref).abs() < 1e-3).mean()
+        rows.append([FAMILY[m] if cap == 1e2 else "", f"{cap:,.0f}", f(100 * (1 - g.converged.mean()), 1),
+                     f(100 * (g["shape"] >= cap / 2).mean(), 1), f(g.excess_logloss.median(), 4),
+                     f(g.excess_logloss.mean(), 3), f(100 * same, 1), f(dS.max(), 4)])
+    write("tab_cap", "Study 2 with the shape cap at 100, 1,000 (as in the paper), 10,000 and 100,000: "
+          "$n = 250$ and 1,000, both censoring schemes, all eight true distributions, 100 datasets each "
+          "(3,200 fits per row).", "stab:cap", "lrrrrrrr",
+          "Head & Cap & Failed (\\%) & At cap (\\%) & \\multicolumn{2}{c}{Excess log-loss} & Unchanged (\\%) & "
+          "Max.\\ $|\\Delta S|$ \\\\\n & & & & Median & Mean & &", rows, size="\\footnotesize",
+          note="Failed: gradient norm above the convergence tolerance at the end of fitting (Section~\\ref{sec:s2}). "
+          "At cap: largest capped shape ($p$ or $q$ for GB2, $k$ for ER-BurrXII) at least half the cap. "
+          "Unchanged: fits whose excess log-loss is within 0.001 of the fit to the same dataset with the cap at 1,000. "
+          "Max.\\ $|\\Delta S|$: largest absolute change, over all 3,200 datasets, of the predicted survival at the "
+          "true 1\\% time, against the cap at 1,000. Every dataset uses the same random starts at every cap. "
+          "Source: \\texttt{sim\\_cap\\_sensitivity.py}.")
+
+
+def kkbox_n50k():
+    """KKBox with every model trained on the same 50,000 spells, with fit and prediction costs."""
+    raw = pd.read_csv(RES / "kkbox_raw_n50k.csv")
+    s = raw.groupby("model").mean(numeric_only=True)
+    rows = []
+    for m in REAL_ORDER:
+        r = s.loc[m]
+        rows.append([real_name(m), f(r.c_td, 3), f(1000 * r.ibs, 1), f(r.test_nll, 2), f"{r.fit_seconds:,.0f}",
+                     f(r.predict_seconds, 1), f"{r.fit_peak_mb:,.0f}", "--" if pd.isna(r.epochs) else f"{r.epochs:.0f}"])
+    write("tab_kkbox_n50k", "KKBox with every model trained on the same random 50,000 spells per split "
+          "(mean over the 3 customer splits of Table~\\ref{stab:real_kkbox}).", "stab:kkbox_n50k", "lrrrrrrr",
+          "Model & $C^{td}$ & IBS & Test NLL & Fit (s) & Predict (s) & Memory (MB) & Epochs", rows,
+          size="\\footnotesize",
+          note="Validation set for early stopping: a random 12,500 of the validation spells. Concordance and IBS use "
+          "a fixed random 50,000 test spells per split, and test NLL all of the about 562,000 test spells. "
+          "Predict: time to compute survival curves for the 50,000 evaluation spells. Memory: peak resident memory "
+          "during fitting above that at the start of the fit, sampled every 20 ms; memory already held by the "
+          "worker from earlier fits is not counted, so small values are lower bounds. Three fits ran at a time on "
+          "an Apple M4 Max (16 cores, 48 GB), one thread each. Weibull (x): test NLL 332.6, 4.0 and 3.6 on the "
+          "three splits. Source: \\texttt{kkbox\\_benchmark.py --n-train 50000}.")
 
 
 if __name__ == "__main__":
@@ -325,6 +440,7 @@ if __name__ == "__main__":
     recovery(); survival(); covariate(); misspec(); network(); real()
     t = tests()
     kt = kkbox()
+    betainc(); kkbox_tail(); cap_sensitivity(); kkbox_n50k()
     print(f"wrote {len(list(OUT.glob('*.tex')))} tables to {OUT}")
     print(t[t.p < 0.05][["dataset", "comparator", "diff", "p"]].to_string(index=False))
     print(kt.to_string(index=False))

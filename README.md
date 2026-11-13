@@ -35,6 +35,18 @@ M=$(.venv/bin/python -c "import realdata as r; print(' '.join(m for m in r.MODEL
 why the Weibull mixture has its own run; with the check in place, the `_full`
 command alone should give the same Weibull mixture (same seeds and splits).
 
+Additional analyses in the supplement (Section S8):
+
+```bash
+.venv/bin/python betainc_accuracy.py           # incomplete beta vs 80-digit mpmath (Table S21), seconds
+.venv/bin/python sim_cap_sensitivity.py --workers 8   # Study 2 at shape caps 1e2-1e5 (Table S22), ~4 h
+.venv/bin/python kkbox_benchmark.py --repeats 3 --n-train 50000 --workers 3 --tag _n50k   # common 50k subset (Table S23), ~20 min
+.venv/bin/python kkbox_tail.py                 # KKBox tail, fits without covariates (Table S24, Fig. S2)
+```
+
+The two long runs append each finished fit to `results/*.part.jsonl` and resume
+from it if restarted.
+
 All results the paper reports are saved in `results/` (`*_raw.csv`: one row
 per fit or fold; `*_summary.csv`: aggregated). The notes below are the
 development log kept while the study was run.

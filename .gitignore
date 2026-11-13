@@ -5,3 +5,5 @@ tools/
 results/*.log
 .DS_Store
 logs/
+results/*.part.jsonl
+results/kkbox_raw_pilot200k.csv

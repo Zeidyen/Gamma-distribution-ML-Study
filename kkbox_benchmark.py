@@ -15,6 +15,8 @@ Differences from realdata.py, all forced by size or structure:
     log-likelihood uses every test row
   - the random survival forest cannot hold ~2 million rows in memory (it stores
     a survival curve per leaf), so it is fitted on a --rsf-n-train subsample
+  - fit time, prediction time (survival curves for the n_eval spells) and the
+    peak memory added during fitting are recorded per fit
   - categorical covariates are one-hot coded for levels with >= 1% of spells,
     remaining levels pooled; booleans are 0/1
 Models, network, optimiser and early stopping are those of realdata.py.
@@ -24,11 +26,13 @@ Usage: .venv/bin/python kkbox_benchmark.py --n-train 200000 --repeats 1 --models
 
 import argparse
 import datetime
+import threading
 import time
 from multiprocessing import Pool
 
 import numpy as np
 import pandas as pd
+import psutil
 import torch
 
 import realdata as rd
@@ -74,6 +78,26 @@ def customer_splits(groups, repeats, test_frac=0.2, val_frac=0.1):
         yield r, tr, va, te
 
 
+class PeakMemory:
+    """Peak resident memory above the level at entry, sampled every 20 ms (MB)."""
+
+    def __enter__(self):
+        self.proc, self.peak, self.stop = psutil.Process(), 0, threading.Event()
+        self.base = self.proc.memory_info().rss
+        self.thread = threading.Thread(target=self._sample, daemon=True)
+        self.thread.start()
+        return self
+
+    def _sample(self):
+        while not self.stop.wait(0.02):
+            self.peak = max(self.peak, self.proc.memory_info().rss)
+
+    def __exit__(self, *exc):
+        self.stop.set()
+        self.thread.join()
+        self.mb = max(self.peak - self.base, 0) / 2**20
+
+
 def run(task):
     r, tr, va, te, ev_idx, model_name = task
     torch.set_num_threads(1)
@@ -89,26 +113,33 @@ def run(task):
     row = dict(dataset="kkbox", repeat=r, fold=0, model=model_name, n_train=len(tr), n_test=len(te),
                n_eval=len(ev_idx))
     try:
-        if model_name in ("cox", "rsf"):
-            model, info = rd.fit_classical(model_name, X, t, e, Xv, tv, ev, seed)
-            surv = rd.classical_surv_df(model_name, model, Xev)
-            nll = np.nan
-        elif model_name in ("deepsurv", "deephit"):
-            model, info = rd.fit_pycox(model_name, X, t, e, Xv, tv, ev, seed)
-            surv = rd.pycox_surv_df(model_name, model, Xev)
-            nll = np.nan
-        else:
-            family, shapes = model_name.split("/")
-            if family == "gb2_warm":
-                model, info = rd.fit_gb2_warm(X, t, e, Xv, tv, ev, seed)
+        with PeakMemory() as mem:
+            if model_name in ("cox", "rsf"):
+                model, info = rd.fit_classical(model_name, X, t, e, Xv, tv, ev, seed)
+            elif model_name in ("deepsurv", "deephit"):
+                model, info = rd.fit_pycox(model_name, X, t, e, Xv, tv, ev, seed)
             else:
-                model, info = rd.fit_parametric(family, shapes, X, t, e, Xv, tv, ev, seed)
+                family, shapes = model_name.split("/")
+                if family == "gb2_warm":
+                    model, info = rd.fit_gb2_warm(X, t, e, Xv, tv, ev, seed)
+                else:
+                    model, info = rd.fit_parametric(family, shapes, X, t, e, Xv, tv, ev, seed)
+        fit_s = time.time() - t0
+        t1 = time.time()  # prediction: survival curves for the n_eval spells
+        if model_name in ("cox", "rsf"):
+            surv = rd.classical_surv_df(model_name, model, Xev)
+        elif model_name in ("deepsurv", "deephit"):
+            surv = rd.pycox_surv_df(model_name, model, Xev)
+        else:
             surv = rd.parametric_surv_df(model, Xev, rd.surv_grid(t, t_ev))
+        pred_s = time.time() - t1
+        nll = np.nan
+        if model_name not in ("cox", "rsf", "deepsurv", "deephit"):
             with torch.no_grad():
                 nll = float(model.nll(torch.tensor(Xte, dtype=DTYPE), torch.tensor(t_te, dtype=DTYPE),
                                       torch.tensor(e_te, dtype=DTYPE)))
-        fit_s = time.time() - t0
-        row.update(seconds=fit_s, epochs=info.get("epochs"), test_nll=nll, val_nll=info.get("best_val_nll"),
+        row.update(seconds=time.time() - t0, fit_seconds=fit_s, predict_seconds=pred_s, fit_peak_mb=mem.mb,
+                   epochs=info.get("epochs"), test_nll=nll, val_nll=info.get("best_val_nll"),
                    cox_penalty=info.get("penalty"), **rd.evaluate(surv, t_ev, e_ev), error=None)
     except Exception as exc:  # noqa: BLE001 - recorded in the results
         row.update(seconds=time.time() - t0, error=f"{type(exc).__name__}: {exc}")
@@ -147,10 +178,20 @@ def main():
             else:
                 tasks.append((r, tr, va, te, ev_idx, m))
     tasks.sort(key=lambda tk: ("gb2" in tk[5] or "deephit" in tk[5] or "mix" in tk[5]), reverse=True)
+    # each finished fit is appended to a .part.jsonl (one JSON object per line), so a crashed run resumes where it stopped
+    part = OUT / f"kkbox_raw{args.tag}.part.jsonl"
+    done = set()
+    if part.exists():
+        done = set(map(tuple, pd.read_json(part, lines=True)[["repeat", "model"]].itertuples(index=False)))
+        print(f"resuming: {len(done)} fits already in {part.name}", flush=True)
+    tasks = [tk for tk in tasks if (tk[0], tk[5]) not in done]
     t0 = time.time()
-    with Pool(min(args.workers, len(tasks))) as pool:
-        rows = list(pool.imap_unordered(run, tasks))
-    out = pd.DataFrame(rows).sort_values(["model", "repeat"])
+    if tasks:
+        with Pool(min(args.workers, len(tasks))) as pool:
+            for row in pool.imap_unordered(run, tasks):
+                with open(part, "a") as fh:
+                    fh.write(pd.Series(row).to_json(double_precision=15) + "\n")
+    out = pd.read_json(part, lines=True).sort_values(["model", "repeat"])
     path = OUT / f"kkbox_raw{args.tag}.csv"
     out.to_csv(path, index=False)
     print(f"done in {time.time() - t0:.0f}s -> {path}; errors: {out.error.notna().sum()}")
